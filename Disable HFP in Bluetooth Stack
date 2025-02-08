@@ -1,0 +1,67 @@
+Step 1: Disable HFP in Bluetooth Stack
+
+Edit BluetoothHeadsetService.java
+📂 Location: frameworks/base/core/java/android/bluetooth/BluetoothHeadsetService.java
+
+Modify this function to ignore HFP requests:
+
+@Override
+public boolean connect(BluetoothDevice device) {
+    Log.w(TAG, "HFP connection blocked for device: " + device.getAddress());
+    return false;  // Prevent HFP connection
+}
+
+Step 2: Force Call Audio to A2DP
+
+Edit BluetoothA2dpService.java
+📂 Location: frameworks/base/core/java/android/bluetooth/BluetoothA2dpService.java
+
+Force phone call audio to be sent over A2DP:
+
+@Override
+public boolean connect(BluetoothDevice device) {
+    Log.i(TAG, "Forcing A2DP for calls: " + device.getAddress());
+    return super.connect(device); // Allow A2DP connection
+}
+
+Step 3: Modify Audio Policy to Use A2DP for Calls
+
+📂 Location: frameworks/av/services/audiopolicy/AudioPolicyManager.cpp
+
+Find this part (which normally prevents A2DP for calls):
+
+if (device == AUDIO_DEVICE_OUT_BLUETOOTH_A2DP) {
+    return false; // Block A2DP for voice calls
+}
+
+Modify it to allow A2DP for calls:
+
+if (device == AUDIO_DEVICE_OUT_BLUETOOTH_A2DP) {
+    return true;  // Allow A2DP for voice calls
+}
+
+Step 4: Modify Audio Service to Ignore HFP
+
+📂 Location: frameworks/base/services/core/java/com/android/server/audio/AudioService.java
+
+Find:
+
+if (device == AudioSystem.DEVICE_OUT_BLUETOOTH_SCO) {
+    routeVoiceCall(); // Default HFP routing
+}
+
+Replace it with:
+
+if (device == AudioSystem.DEVICE_OUT_BLUETOOTH_A2DP) {
+    routeVoiceCall(); // Route calls to A2DP instead
+}
+
+Final Step: Recompile & Flash
+
+    Recompile Android AOSP
+
+m -j32
+
+Flash modified system.img
+
+fastboot flash system out/target/product/<device>/system.img
